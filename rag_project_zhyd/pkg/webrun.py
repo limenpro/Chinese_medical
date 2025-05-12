@@ -1,6 +1,6 @@
 import time
 import os
-import docx
+from docx import Document
 import re
 from elasticsearch import Elasticsearch, exceptions
 import gradio as gr
@@ -11,7 +11,11 @@ from openai import OpenAI
 from embed import MedicineInfoStandardizer,classify_pharmacy_query, connect_elasticsearch, extract_drug_info, process_and_vectorize,verify_data_in_elasticsearch, retrieve_vector_and_text
 import os
 
-client = OpenAI()#· 调用openai的api
+client = OpenAI(
+    base_url=os.environ.get("OPENAI_API_BASE"),
+    # sk-xxx替换为自己的key
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)#· 调用openai的api
 
 history = []  # 问答记忆列表
 
@@ -164,7 +168,7 @@ class UploadDoc:# 上传文档类
             return
 
         try:
-            doc_obj = docx.Document(self.file_input)
+            doc_obj = Document(self.file_input)
             try:
                 # 假设这是调用 extract_titles_and_content 的地方
                 content_dict = self.extract_titles_and_content(doc_obj)
@@ -209,7 +213,7 @@ def LLM_QA(llm_q):# 调用llm进行qa环节
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": qa_template}],
             stream=False  # Set to False for normal output
         )
@@ -308,7 +312,7 @@ with gr.Blocks() as demo:# web页面效果主代码
 
     
     with gr.Tab("文档导入"):# 文档导入页面
-        folder_input = gr.Textbox(label="保存向量数据库的文件夹路径", value=r"C:/Users/abc10/桌面/workllm/ragproject")
+        folder_input = gr.Textbox(label="保存向量数据库的文件夹路径", value=r"/home/lim/rag-project/Chinese_medic_dict_RAG")
 
 
         upload_interface = gr.Interface(
@@ -324,13 +328,13 @@ with gr.Blocks() as demo:# web页面效果主代码
         )
     
     with gr.Tab("配置"):# 配置页面
-        es_host_input = gr.Textbox(label="ES主机地址", value='192.168.110.28')
+        es_host_input = gr.Textbox(label="ES主机地址", value='10.29.243.239')
         es_port_input = gr.Textbox(label="ES服务端口", value='9200')
         es_user_input = gr.Textbox(label="ES用户名", value='elastic')
-        es_pass_input = gr.Textbox(label="ES密码", type="password", value='7ztvwEMjr0H+_R4Vec*R')
-        
-        es_index_input = gr.Textbox(label="ES索引名（上传的会和向量数据库同名）", value='zhyd')  # 新增索引名输入框
-        vector_db_path_input = gr.Textbox(label="向量数据库位置", value='C:/Users/abc10/桌面/workllm/ragproject/embeddings2.npz')  # 新增向量数据库位置输入框
+        # es_pass_input = gr.Textbox(label="ES密码", type="password", value='7ztvwEMjr0H+_R4Vec*R')
+        es_pass_input = gr.Textbox(label="ES密码", type="password", value='h51lsb4dcIqHefyKpM1N')
+        es_index_input = gr.Textbox(label="ES索引名（上传的会和向量数据库同名）", value='lim')  # 新增索引名输入框
+        vector_db_path_input = gr.Textbox(label="向量数据库位置", value='/home/lim/rag-project/Chinese_medic_dict_RAG/embeddings2.npz')  # 新增向量数据库位置输入框
 
         config_submit = gr.Button("保存配置")
         config_message = gr.Textbox(label="状态", interactive=False)

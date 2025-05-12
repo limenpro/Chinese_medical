@@ -11,7 +11,11 @@ from openai import OpenAI
 import numpy as np
 
 load_dotenv(find_dotenv()) 
-client = OpenAI()
+client = OpenAI(
+    base_url=os.environ.get("OPENAI_API_BASE"),
+    # sk-xxx替换为自己的key
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)
 
 model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
@@ -58,7 +62,7 @@ class MedicineInfoStandardizer:# 药物信息标准化器
         未涉及的字段一定不要提到。一定不要出现“字段：None”的类似句子通常来说问题中只有2-3个字段内容，确保你不会输出超过3个字段，字段间换行输出
         """
         response = self.llm.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": extract_template}]
         )
         
@@ -91,7 +95,7 @@ class MedicineInfoStandardizer:# 药物信息标准化器
         
         # 调用大模型生成标准化输出
         response = self.llm.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": extract_template}]
         )
         standardized_output = response.choices[0].message.content.strip() if response.choices else "无输出"
@@ -115,7 +119,7 @@ def classify_pharmacy_query(input_data):# 检查用户输入的问题是否与�
         """
         
         response =  client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": classify_template}]
         )
         
@@ -151,6 +155,9 @@ def extract_subsections(content):# 提取小标题和内容
     return subsections
 
 def retrieve_data_from_es(index_name):# 从Elasticsearch中检索数据
+    global es
+    if es is None:
+        es = Elasticsearch(["http://localhost:9200"])  # 重新初始化
     res = es.search(index=index_name, body={"query": {"match_all": {}}, "size": 10000})
     return res['hits']['hits']
 
@@ -259,28 +266,54 @@ def retrieve_vector_and_text(input_data, embedding_file_path, top_k=1):#将接�
     return retrieved_content, generated_answer
 
 def connect_elasticsearch():# 连接Elasticsearch
-    hosts = [
-        {'host': '192.168.110.28', 'port': 9200, 'scheme': 'https'},
-        {'host': '192.168.1.230', 'port': 9200, 'scheme': 'https'},
-        {'host': '127.0.0.1', 'port': 9200, 'scheme': 'https'}
-    ]
-    es = None
-    for host in hosts:
-        try:
-            es = Elasticsearch(
-                [host],
-                basic_auth=('elastic', '7ztvwEMjr0H+_R4Vec*R'),
-                verify_certs=False  # 在开发时禁用 SSL 验证，生产环境中请谨慎使用
-            )
-            if es.ping():
-                print(f'成功连接到 Elasticsearch: {host["host"]}')
-                return es
-            else:
-                print(f'无法连接到 Elasticsearch: {host["host"]}')
-        except exceptions.ConnectionError as e:
-            print(f"连接错误：{e} - 尝试下一个主机")
+    # hosts = [
+    #         {
+    #             "host": "localhost",
+    #             "port": 9200
+    #         }
+    #     ], # 替换为你的ES地址
+    # es = None
+    # for host in hosts:
+    #     try:
+    #         es = Elasticsearch(
+    #             [host],
+    #             basic_auth=('elastic', 'h51lsb4dcIqHefyKpM1N'),
+    #             verify_certs=False  # 在开发时禁用 SSL 验证，生产环境中请谨慎使用
+    #         )
+    #         if es.ping():
+    #             print(f'成功连接到 Elasticsearch: {host["host"]}')
+    #             return es
+    #         else:
+    #             print(f'无法连接到 Elasticsearch: {host["host"]}')
+    #     except exceptions.ConnectionError as e:
+    #         print(f"连接错误：{e} - 尝试下一个主机")
 
-    print('所有主机连接失败')
+    # print('所有主机连接失败')
+    # return None
+    try:
+        # 正确的 hosts 格式，是一个包含字典的列表
+        hosts = [
+            {
+                'scheme': 'http',  # 这里指定协议方案，也可以是 https
+                "host": "localhost",
+                "port": 9200
+            }
+        ]
+        es = Elasticsearch(
+            hosts,
+            # timeout=30,  # 请求超时时间（秒）
+            max_retries=3,  # 失败重试次数
+            retry_on_timeout=True,  # 超时后自动重试
+            basic_auth=('elastic', 'h51lsb4dcIqHefyKpM1N'),# 替换为你的用户名和密码
+            verify_certs=False  # 在开发时禁用 SSL 验证，生产环境中请谨慎使用
+)
+        if es.ping():
+            print(f'成功连接到 Elasticsearch: {hosts[0]["host"]}')
+            return es
+        else:
+            print('无法连接到 Elasticsearch')
+    except Exception as e:
+        print(f'连接 Elasticsearch 时出现错误: {e}')
     return None
 es = connect_elasticsearch()# 初始化Elasticsearch
 def extract_drug_info(text):# 将标准化后的信息切分
