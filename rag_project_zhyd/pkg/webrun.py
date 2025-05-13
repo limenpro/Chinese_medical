@@ -10,7 +10,8 @@ from elasticsearch import Elasticsearch, exceptions
 from openai import OpenAI
 from embed import MedicineInfoStandardizer,classify_pharmacy_query, connect_elasticsearch, extract_drug_info, process_and_vectorize,verify_data_in_elasticsearch, retrieve_vector_and_text
 import os
-
+# from dotenv import load_dotenv, find_dotenv
+# load_dotenv(find_dotenv(), strict=True) 更新版本的支持严格模式，避免环境变量转义
 client = OpenAI(
     base_url=os.getenv("OPENAI_API_BASE").replace("\\x3a", ":").replace("\\/", "/"),# 替换为自己的url，避免转义问题
     # sk-xxx替换为自己的key
