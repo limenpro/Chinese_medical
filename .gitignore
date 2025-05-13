@@ -8,4 +8,4 @@ __pycache__/
 # 忽略 VSCode 配置文件
 .vscode/
 # 忽略huggingface中的缓存文件
-/.cache/huggingface/
+.cache/huggingface/
