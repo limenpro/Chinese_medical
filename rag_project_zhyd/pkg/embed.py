@@ -16,7 +16,7 @@ client = OpenAI(
     # sk-xxx替换为自己的key
     api_key=os.environ.get("OPENAI_API_KEY"),
 )
-
+# 加载 SentenceTransformer 嵌入模型
 model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
 
