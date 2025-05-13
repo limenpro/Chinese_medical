@@ -12,7 +12,7 @@ from embed import MedicineInfoStandardizer,classify_pharmacy_query, connect_elas
 import os
 
 client = OpenAI(
-    base_url=os.environ.get("OPENAI_API_BASE"),
+    base_url=os.getenv("OPENAI_API_BASE").replace("\\x3a", ":").replace("\\/", "/"),# 替换为自己的url，避免转义问题
     # sk-xxx替换为自己的key
     api_key=os.environ.get("OPENAI_API_KEY"),
 )#· 调用openai的api
